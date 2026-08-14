@@ -35,7 +35,7 @@ fi
 LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -n1 || echo "127.0.0.1")
 
 echo "================================================================="
-echo "✅ Panel Web Cockpit configurado e integrado correctamente."
+echo "✅ Panel Web Cockpit configurado e integrado correctamente en Kubuntu."
 echo "🌐 Acceso local:       https://localhost:9090"
 echo "🌐 Acceso en tu red:   https://${LOCAL_IP}:9090"
 echo "💡 Inicia sesión con las credenciales de tu usuario de sistema."

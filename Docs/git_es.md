@@ -6,7 +6,7 @@ sidebar_position: 4
 
 Esta guía detalla el entorno de control de versiones y el conjunto de herramientas optimizadas en la carpeta `Git`.
 
-El entorno incluye el cliente clásico **Git**, el formateador visual de diferencias **Git-Delta**, y la interfaz gráfica de terminal **Lazygit**, además de la utilidad oficial **GitHub CLI (gh)**.
+El entorno incluye el cliente clásico **Git**, el formateador visual de diferencias **Git-Delta**, la interfaz gráfica de terminal **Lazygit**, además de la utilidad oficial **GitHub CLI (gh)**.
 
 ---
 
@@ -42,47 +42,27 @@ El script principal de Git automatiza la instalación y define las mejores prác
    ```
 
 5. **Instalación de Lazygit (TUI)**:
-   Si no se encuentra instalado en `/usr/local/bin`, se descarga e instala automáticamente el binario compilado de la última versión oficial desde GitHub:
+   Descarga e instala automáticamente el binario compilado de la última versión oficial desde GitHub según la arquitectura del sistema:
    ```bash
-   LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
-   curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-   tar xf lazygit.tar.gz lazygit
-   sudo install lazygit /usr/local/bin
-   rm lazygit lazygit.tar.gz
+   ./Git/git.sh
+   # O usando just:
+   just git-setup
    ```
 
 ---
 
 ## 2. Cliente de GitHub en Consola (`github-cli.sh`)
 
-Instala la herramienta de consola oficial de GitHub (`gh`) que permite gestionar repositorios, Pull Requests, Issues y secretos directamente desde la terminal.
+Instala la herramienta oficial de GitHub (`gh`) que permite gestionar repositorios, Pull Requests, Issues y secretos directamente desde la terminal.
 
-1. **Dependencias y Clave GPG del repositorio oficial**:
-   ```bash
-   sudo apt update
-   sudo apt install -y curl gpg
-   sudo mkdir -p -m 755 /etc/apt/keyrings
-   curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-   sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-   ```
-
-2. **Registro del Repositorio de GitHub**:
-   ```bash
-   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-   ```
-
-3. **Instalación**:
-   ```bash
-   sudo apt update
-   sudo apt install -y gh
-   ```
+```bash
+./Git/github-cli.sh
+```
 
 ---
 
 ## Verificación
 
-Para verificar que el entorno de Git y sus herramientas asociadas estén correctamente configurados:
-
-- **Git-Delta**: Ejecuta `git diff` en cualquier repositorio con cambios locales. Deberías ver las diferencias formateadas con números de línea y colores estéticos provistos por Delta.
-- **Lazygit**: Ejecuta `lazygit` dentro de un repositorio de Git. Se debe abrir la interfaz interactiva.
-- **GitHub CLI**: Ejecuta `gh --version` para verificar su instalación. Para autenticarte con tu cuenta de GitHub, inicia el asistente mediante `gh auth login`.
+- **Git-Delta**: Ejecuta `git diff` en cualquier repositorio con cambios locales.
+- **Lazygit**: Ejecuta `lazygit` dentro de un repositorio de Git.
+- **GitHub CLI**: Ejecuta `gh --version` o inicia sesión con `gh auth login`.

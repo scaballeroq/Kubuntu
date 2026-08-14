@@ -1,5 +1,5 @@
 #!/bin/bash
-# fonts.sh - Instalación de Fuentes de Desarrollo (Optimizado) para Kubuntu (KDE Plasma)
+# fonts.sh - Instalación de Fuentes de Desarrollo (Nerd Fonts) para Kubuntu
 
 set -euo pipefail
 
@@ -7,8 +7,8 @@ set -euo pipefail
 FONT_DIR="$HOME/.local/share/fonts"
 mkdir -p "$FONT_DIR"
 
-# Lista de Nerd Fonts a instalar
-FONTS=("JetBrainsMono" "FiraCode" "CascadiaCode" "Meslo" "Hack")
+# Fuentes a descargar
+FONTS=("FiraCode" "JetBrainsMono" "Hack" "CascadiaCode")
 
 echo "ℹ️ Verificando e instalando Nerd Fonts..."
 
@@ -18,20 +18,15 @@ for font in "${FONTS[@]}"; do
         echo "✅ $font ya está instalada. Saltando..."
     else
         echo "⬇️ Descargando $font..."
-        URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font.zip"
-        curl -L -o "/tmp/$font.zip" "$URL"
-        
-        echo "📦 Extrayendo $font..."
-        unzip -q -o "/tmp/$font.zip" -d "$FONT_DIR"
-        rm -f "/tmp/$font.zip"
+        wget -q --show-progress "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font}.tar.xz" -O "/tmp/${font}.tar.xz"
+        echo "📦 Descomprimiendo $font..."
+        tar -xf "/tmp/${font}.tar.xz" -C "$FONT_DIR"
+        rm "/tmp/${font}.tar.xz"
     fi
 done
 
-# Eliminar archivos innecesarios (txt, md) que a veces vienen en los zips
-find "$FONT_DIR" -name "*.txt" -delete
-find "$FONT_DIR" -name "*.md" -delete
+# Actualizar la caché de fuentes del sistema
+echo "ℹ️ Actualizando caché de fuentes (fc-cache)..."
+fc-cache -f "$FONT_DIR"
 
-echo "ℹ️ Actualizando caché de fuentes del sistema..."
-fc-cache -f
-
-echo "✅ Fuentes de desarrollo instaladas y actualizadas correctamente."
+echo "✅ Fuentes instaladas correctamente en $FONT_DIR."

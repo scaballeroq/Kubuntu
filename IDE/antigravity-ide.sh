@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# antigravity-ide.sh - Google Antigravity IDE Installer for Kubuntu
-
 set -euo pipefail
 
 echo "=== Google Antigravity IDE Installer ==="
@@ -50,121 +48,213 @@ install_root="/opt/antigravity-ide"
 command_link="/usr/local/bin/antigravity-ide"
 desktop_file="/usr/share/applications/antigravity-ide.desktop"
 icon_file="/usr/share/icons/hicolor/512x512/apps/antigravity-ide.png"
-managed_id="google-antigravity-ide-v1"
+archive_top_dir="Antigravity IDE"
+install_dir="Antigravity-IDE"
+managed_id="linuxcapable-antigravity-ide-v1"
 root_marker="$install_root/.linuxcapable-managed"
-sandbox_path="$install_root/Antigravity-IDE/chrome-sandbox"
 
-tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/antigravity-ide-update.XXXXXX")
-archive="$tmpdir/antigravity-ide.tar.gz"
-archive_list="$tmpdir/archive.list"
-desktop_staged="$tmpdir/antigravity-ide.desktop"
+case "$(uname -m)" in
+x86_64 | amd64) platform="linux-x64" ;;
+aarch64 | arm64) platform="linux-arm" ;;
+*)
+	echo "Unsupported architecture: $(uname -m)" >&2
+	exit 1
+	;;
+esac
+
+for required_command in curl tar python3 desktop-file-validate; do
+	if ! command -v "$required_command" >/dev/null 2>&1; then
+		echo "$required_command is required to install Antigravity IDE." >&2
+		exit 1
+	fi
+done
+
+command_preexisting=no
+command_target_before=''
+if [ -L "$command_link" ]; then
+	command_preexisting=yes
+	command_target_before=$(readlink -- "$command_link")
+	command_target=$(readlink -f "$command_link" || true)
+	case "$command_target" in
+	"$install_root"/*) ;;
+	*)
+		echo "$command_link points to $command_target. Move it before rerunning this helper." >&2
+		exit 1
+		;;
+	esac
+elif [ -e "$command_link" ]; then
+	echo "$command_link exists and is not a symlink. Move it before rerunning this helper." >&2
+	exit 1
+fi
+
+desktop_preexisting=no
+desktop_legacy_owned=no
+if [ -L "$desktop_file" ] || { [ -e "$desktop_file" ] && [ ! -f "$desktop_file" ]; }; then
+	echo "$desktop_file is not a regular desktop file. Move it before rerunning this helper." >&2
+	exit 1
+elif [ -f "$desktop_file" ]; then
+	desktop_preexisting=yes
+	if grep -Fqx "X-LinuxCapable-Managed=$managed_id" "$desktop_file"; then
+		:
+	elif grep -Fqx "Exec=$command_link %U" "$desktop_file" &&
+		grep -Fqx 'Icon=antigravity-ide' "$desktop_file" &&
+		grep -Fqx 'StartupWMClass=antigravity-ide' "$desktop_file"; then
+		desktop_legacy_owned=yes
+	else
+		echo "$desktop_file is not a recognized LinuxCapable launcher. Move it before rerunning this helper." >&2
+		exit 1
+	fi
+fi
+
+icon_preexisting=no
+if [ -L "$icon_file" ] || { [ -e "$icon_file" ] && [ ! -f "$icon_file" ]; }; then
+	echo "$icon_file is not a regular icon file. Move it before rerunning this helper." >&2
+	exit 1
+elif [ -f "$icon_file" ]; then
+	icon_preexisting=yes
+	if [ "$desktop_preexisting" != yes ]; then
+		echo "$icon_file exists without a recognized launcher. Move it before rerunning this helper." >&2
+		exit 1
+	fi
+fi
+
+tmpdir=''
 stage_root=''
 backup_root=''
-committed=no
+desktop_backup=''
+icon_backup=''
+desktop_staged=''
 new_root_installed=no
-root_owned=no
-root_legacy_owned=no
-desktop_legacy_owned=no
-
+committed=no
 cleanup() {
 	status=$?
 	trap - EXIT
-	if [ "$status" -ne 0 ] && [ "$new_root_installed" = yes ] && [ -n "$backup_root" ] && [ -d "$backup_root" ]; then
-		rm -rf "$install_root"
-		mv "$backup_root" "$install_root"
-		backup_root=''
+	if [ "$committed" != yes ] && [ "$new_root_installed" = yes ]; then
+		if [ "$command_preexisting" = yes ]; then
+			ln -sfn -- "$command_target_before" "$command_link"
+		elif [ -L "$command_link" ]; then
+			command_target=$(readlink -f "$command_link" || true)
+			case "$command_target" in "$install_root"/*) rm -f -- "$command_link" ;; esac
+		fi
+		if [ "$desktop_preexisting" = yes ] && [ -f "$desktop_backup" ]; then
+			cp -a -- "$desktop_backup" "$desktop_file"
+		elif [ "$desktop_preexisting" = no ] && [ -f "$desktop_file" ] &&
+			grep -Fqx "X-LinuxCapable-Managed=$managed_id" "$desktop_file"; then
+			rm -f -- "$desktop_file"
+		fi
+		if [ "$icon_preexisting" = yes ] && [ -f "$icon_backup" ]; then
+			cp -a -- "$icon_backup" "$icon_file"
+		elif [ "$icon_preexisting" = no ] && [ -f "$icon_file" ]; then
+			rm -f -- "$icon_file"
+		fi
+		if [ -f "$root_marker" ] && [ "$(cat "$root_marker")" = "$managed_id" ]; then
+			rm -rf -- "$install_root"
+		fi
+		if command -v update-desktop-database >/dev/null 2>&1; then
+			update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+		fi
+		if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+			gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
+		fi
 	fi
-	rm -rf "$tmpdir"
-	if [ -n "$stage_root" ]; then
-		rm -rf "$stage_root"
+	if [ "$committed" != yes ] && [ -n "$backup_root" ] && [ -d "$backup_root" ]; then
+		if [ ! -e "$install_root" ] && [ ! -L "$install_root" ]; then
+			if mv -- "$backup_root" "$install_root"; then
+				backup_root=''
+			else
+				printf 'The previous Antigravity IDE install remains at %s; restore it before retrying.\n' "$backup_root" >&2
+			fi
+		else
+			printf 'The previous Antigravity IDE install remains at %s because %s is occupied.\n' "$backup_root" "$install_root" >&2
+		fi
+	fi
+	if [ -n "$stage_root" ] && [ -d "$stage_root" ]; then
+		rm -rf -- "$stage_root"
+	fi
+	if [ -n "$tmpdir" ] && [ -d "$tmpdir" ]; then
+		rm -rf -- "$tmpdir"
 	fi
 	if [ "$committed" = yes ] && [ -n "$backup_root" ] && [ -d "$backup_root" ]; then
-		rm -rf "$backup_root"
+		rm -rf -- "$backup_root"
 	fi
 	exit "$status"
 }
 trap cleanup EXIT
 
-arch=$(uname -m)
-case "$arch" in
-x86_64) platform="linux-x64" ;;
-aarch64 | arm64) platform="linux-arm64" ;;
-*)
-	echo "Unsupported architecture: $arch" >&2
+tmpdir=$(mktemp -d /var/tmp/antigravity-ide.XXXXXX)
+download_html="$tmpdir/download.html"
+archive="$tmpdir/Antigravity-IDE.tar.gz"
+archive_list="$tmpdir/archive-list.txt"
+desktop_staged="$tmpdir/antigravity-ide-staged.desktop"
+desktop_backup="$tmpdir/antigravity-ide.desktop.before"
+icon_backup="$tmpdir/antigravity-ide.png.before"
+if [ "$desktop_preexisting" = yes ]; then
+	cp -a -- "$desktop_file" "$desktop_backup"
+fi
+if [ "$icon_preexisting" = yes ]; then
+	cp -a -- "$icon_file" "$icon_backup"
+fi
+
+curl -fsSL --proto '=https' --proto-redir '=https' --compressed --retry 3 -o "$download_html" "$download_page"
+download_fields=$(
+	python3 - "$download_html" "$download_page" "$platform" <<'PY'
+import re
+import sys
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.parse import urljoin
+
+class LinkParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        href = dict(attrs).get("href")
+        if href:
+            self.hrefs.append(href)
+
+html = Path(sys.argv[1]).read_text(errors="replace")
+page_url = sys.argv[2]
+platform = sys.argv[3]
+parser = LinkParser()
+parser.feed(html)
+pattern = re.compile(
+    r"https://edgedl\.me\.gvt1\.com/edgedl/release2/j0qc3/antigravity/stable/"
+    r"([0-9]+\.[0-9]+\.[0-9]+)-[0-9]+/"
+    + re.escape(platform)
+    + r"/Antigravity%20IDE\.tar\.gz"
+)
+matches = []
+for href in parser.hrefs:
+    url = urljoin(page_url, href)
+    match = pattern.fullmatch(url)
+    if match and url not in {item[1] for item in matches}:
+        matches.append((match.group(1), url))
+
+if len(matches) != 1:
+    raise SystemExit(f"Could not find an IDE download for {platform}")
+
+print(*matches[0], sep="\t")
+PY
+)
+IFS=$'\t' read -r version download_url <<<"$download_fields"
+
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+   [[ ! "$download_url" =~ ^https://edgedl\.me\.gvt1\.com/edgedl/release2/j0qc3/antigravity/stable/[0-9]+\.[0-9]+\.[0-9]+-[0-9]+/${platform}/Antigravity%20IDE\.tar\.gz$ ]]; then
+	echo "Could not parse the Antigravity IDE download page." >&2
 	exit 1
-	;;
-esac
+fi
 
-html=$(curl -fsSL --proto '=https' --proto-redir '=https' --retry 3 "$download_page")
-download_url=$(
-	python3 - "$html" "$platform" <<'PY'
-import html, re, sys, urllib.parse
-
-content, platform = sys.argv[1:]
-matches = re.findall(r'href="([^"]+)"', content)
-candidates = []
-for href in matches:
-    url = urllib.parse.urljoin("https://antigravity.google/download", html.unescape(href))
-    parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != "https" or parsed.netloc != "edgedl.me.gvt1.com":
-        continue
-    if not parsed.path.startswith("/antigravity/ide/"):
-        continue
-    if f"-{platform}.tar.gz" not in parsed.path:
-        continue
-    candidates.append(url)
-
-if not candidates:
-    raise SystemExit("No Antigravity IDE download URL found")
-
-print(candidates[0])
-PY
-)
-
-version=$(
-	python3 - "$download_url" "$platform" <<'PY'
-import re, sys, urllib.parse
-
-url, platform = sys.argv[1:]
-path = urllib.parse.urlsplit(url).path
-match = re.search(rf'/antigravity-ide-([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9]+)?)-{re.escape(platform)}\.tar\.gz$', path)
-if not match:
-    raise SystemExit(f"Could not parse Antigravity IDE version from URL: {url}")
-
-print(match.group(1))
-PY
-)
-
-archive_top_dir="Antigravity-IDE"
-install_dir="Antigravity-IDE"
 expected_target="$install_root/$install_dir/antigravity-ide"
-legacy_expected_target="$install_root/antigravity-ide"
-
-if [ -L "$command_link" ]; then
-	:
-elif [ -e "$command_link" ]; then
-	echo "$command_link is not a symlink. Move it before rerunning this helper." >&2
-	exit 1
-fi
-
-if [ -L "$desktop_file" ]; then
-	echo "$desktop_file is a symlink. Move it before rerunning this helper." >&2
-	exit 1
-elif [ -f "$desktop_file" ]; then
-	if grep -Fqx "X-LinuxCapable-Managed=$managed_id" "$desktop_file"; then
-		:
-	elif grep -Fqx "Exec=$command_link %U" "$desktop_file" &&
-		grep -q '^Icon=antigravity-ide$' "$desktop_file" &&
-		grep -q '^StartupWMClass=antigravity-ide$' "$desktop_file"; then
-		desktop_legacy_owned=yes
-	else
-		echo "$desktop_file is not a recognized LinuxCapable desktop file. Move it before rerunning this helper." >&2
-		exit 1
-	fi
-fi
-
-if [ -L "$install_root" ]; then
-	echo "$install_root is a symlink. Move it before rerunning this helper." >&2
+legacy_expected_target="$install_root/$archive_top_dir/antigravity-ide"
+sandbox_path="$install_root/$install_dir/chrome-sandbox"
+root_owned=no
+root_legacy_owned=no
+if [ -L "$install_root" ] || { [ -e "$install_root" ] && [ ! -d "$install_root" ]; }; then
+	echo "$install_root is not a regular install directory. Move it before rerunning this helper." >&2
 	exit 1
 elif [ -d "$install_root" ]; then
 	if [ -f "$root_marker" ] && [ "$(cat "$root_marker")" = "$managed_id" ]; then

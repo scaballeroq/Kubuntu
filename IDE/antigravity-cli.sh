@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# antigravity-cli.sh - Google Antigravity CLI Installer for Kubuntu
-
 set -euo pipefail
 
 echo "=== Google Antigravity CLI Installer ==="

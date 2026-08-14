@@ -1,79 +1,46 @@
 ---
-title: Development Environments (IDEs)
 sidebar_position: 5
 ---
 
 # Development Environments (IDEs) in Kubuntu
 
-This guide details the installation and configuration of editors and integrated development environments located in the `IDE` directory.
+This guide details the installation and setup of developer editors and IDE suites in the `IDE` directory.
 
-The environment covers the modern terminal editor **Neovim** (powered by LazyVim), the desktop editor **Visual Studio Code**, the AI client **OpenCode**, and the full suite of **Google Antigravity Desktop / CLI / IDE Engine**.
+The environment covers terminal-based **Neovim** (powered by LazyVim), desktop **Visual Studio Code**, AI client **OpenCode**, and the full **Google Antigravity Desktop 2.0 / CLI / IDE** suite.
 
 ---
 
-## 1. Neovim + LazyVim (`neovim.sh`)
+## 1. Neovim & LazyVim (`neovim.sh`)
 
-Installs and configures an ultra-fast, modular editing environment in the terminal using Neovim and the pre-configured LazyVim distribution.
+Installs and configures an ultra-fast, modular terminal IDE using Neovim and LazyVim starter.
 
-1. **Neovim and Dependencies Installation**:
-   ```bash
-   sudo apt update
-   sudo apt install -y neovim gcc make g++ ripgrep fd-find xclip wl-copy git
-   ```
-
-2. **Command Compatibility**:
-   Ensures `fdfind` is mapped to `fd` in the user's local bin path:
-   ```bash
-   mkdir -p ~/.local/bin
-   [ -f /usr/bin/fdfind ] && ln -sf /usr/bin/fdfind ~/.local/bin/fd
-   ```
-
-3. **Deploy LazyVim**:
-   Clones the official starter template to the user configuration directory:
-   ```bash
-   git clone https://github.com/LazyVim/starter "$HOME/.config/nvim"
-   rm -rf "$HOME/.config/nvim/.git"
-   ```
+```bash
+./IDE/neovim.sh
+# Or using just:
+just nvim
+```
 
 ---
 
 ## 2. Visual Studio Code (`vscode.sh`)
 
-Automates the installation of Visual Studio Code from official Microsoft repositories to guarantee secure automatic updates.
+Automates VS Code installation from Microsoft's official APT repository:
 
-1. **Prerequisites**:
-   ```bash
-   sudo apt update
-   sudo apt install -y wget gpg apt-transport-https
-   ```
-
-2. **Import GPG Key**:
-   ```bash
-   wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-   sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-   rm -f packages.microsoft.gpg
-   ```
-
-3. **Register Official Repository**:
-   ```bash
-   sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-   ```
-
-4. **Installation**:
-   ```bash
-   sudo apt update
-   sudo apt install -y code
-   ```
+```bash
+./IDE/vscode.sh
+# Or using just:
+just vscode
+```
 
 ---
 
-## 3. Google Antigravity Desktop, CLI & IDE (`antigravity.sh`, `antigravity-cli.sh`, `antigravity-ide.sh`)
+## 3. Google Antigravity Desktop 2.0, CLI & IDE (`antigravity.sh`, `antigravity-cli.sh`, `antigravity-ide.sh`)
 
-Complete scripts for installing and updating the Google Antigravity AI development platform:
+Comprehensive scripts for installation and automated updates:
 
-- **Google Antigravity Desktop (`antigravity.sh`)**: Quick installer via Google Artifact Registry official repository or helper.
-- **Google Antigravity CLI (`antigravity-cli.sh`)**: Terminal CLI (`agy`) installer with integrity checks and `update-antigravity-cli` helper.
-- **Google Antigravity IDE Engine (`antigravity-ide.sh`)**: Standalone IDE engine installer with Chromium sandbox configuration and `update-antigravity-ide` helper.
+- **Google Antigravity Desktop 2.0 (`antigravity.sh`)**: Tarball deployment to `/opt/antigravity`, `/usr/local/bin/update-antigravity` helper, desktop entry, high-res icon, and Chromium sandbox permissions (`4755`).
+- **Google Antigravity CLI (`antigravity-cli.sh`)**: Terminal CLI (`agy`) installer.
+- **Google Antigravity IDE Engine (`antigravity-ide.sh`)**: Standalone IDE engine with `/usr/local/bin/update-antigravity-ide` helper.
 
 ```bash
 just antigravity
@@ -85,7 +52,7 @@ just antigravity-ide
 
 ## 4. OpenCode AI CLI/Editor (`opencode.sh`)
 
-Automated installation of OpenCode AI client with explicit version support (e.g. `v1.18.13`).
+Automated installation of OpenCode AI CLI with version pin support:
 
 ```bash
 ./IDE/opencode.sh
@@ -99,9 +66,7 @@ just opencode
 
 ## Verification
 
-To check proper functionality:
-
-- **Neovim**: Run `nvim` in your terminal (or Konsole). On first launch, LazyVim plugins will download automatically. Run `:LazyHealth` to check LSP health.
-- **VS Code**: Run `code` or open it from the KDE Plasma application launcher.
-- **Google Antigravity**: Run `antigravity` or `agy --version`.
+- **Neovim**: Run `nvim` in terminal.
+- **VS Code**: Run `code` or launch from KDE application menu.
+- **Google Antigravity**: Run `antigravity` in terminal or launch from KDE menu.
 - **OpenCode**: Run `opencode --version`.

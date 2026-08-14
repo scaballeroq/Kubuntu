@@ -2,24 +2,24 @@
 sidebar_position: 2
 ---
 
-# System Configuration in Kubuntu (KDE Plasma)
+# System Setup in Kubuntu
 
-This guide details the base setup, terminal optimization, essential tool installations, multimedia support, hardware integrations, and user environment customizations for Kubuntu (KDE Plasma 6 / 5).
+This guide details the base configuration, Workspace partition automounting, native `x86_64-v3` kernel compilation, KDE Plasma customization, 3D screensaver setup, terminal enhancements, and web administration console applied to a Kubuntu (KDE Plasma) workstation.
 
-All configurations are automated through scripts in the `Setup` directory.
+All setups are automated through scripts in the `Setup` directory.
 
 ---
 
 ## 1. Base Post-Installation (`post-install.sh`)
 
-Prepares the system by configuring additional official repositories, installing essential packages, and enabling hardware acceleration.
+Prepares the base system by enabling official repositories, installing essential packages, and configuring hardware acceleration.
 
 1. **System update**:
    ```bash
    sudo apt update && sudo apt upgrade -y
    ```
 
-2. **Enable Extra Repositories** (Universe, Multiverse, and Restricted):
+2. **Enable Extra Repositories** (Universe, Multiverse, Restricted):
    ```bash
    sudo add-apt-repository -y universe
    sudo add-apt-repository -y multiverse
@@ -27,111 +27,92 @@ Prepares the system by configuring additional official repositories, installing 
    sudo apt update
    ```
 
-3. **Essential Software**:
-   - Compilation: `build-essential`, `cmake`
+3. **Essential Software and Utilities**:
+   - Compilation: `build-essential`, `cmake`, `linux-headers-$(uname -r)`
+   - Memory Optimization: `zram-tools` (ZRAM with ZSTD)
    - Monitoring: `btop`, `htop`, `inxi`
    - Utilities: `curl`, `fuse3`, `libfuse2t64`, `exfatprogs`, `p7zip`, `unrar`, `zip`, `unzip`, `bzip2`, `xz-utils`
    - Graphics & Multimedia: `vlc`, `gimp`, `gparted`
    - Universal Packages: `flatpak`, `plasma-discover-backend-flatpak`
 
-4. **Multimedia Codecs and HW Acceleration**:
+4. **Multimedia Codecs & Hardware Acceleration**:
    ```bash
    sudo apt install -y kubuntu-restricted-extras libavcodec-extra ffmpeg mesa-va-drivers mesa-vdpau-drivers
    ```
 
 ---
 
-## 2. KDE Plasma Customization (`kde-settings.sh` & `apariencia.sh`)
+## 2. Workspace Partition Automount (`mount-workspace.sh`)
 
-Applies recommended configuration for KDE Plasma 6 / 5 via CLI:
-- **Night Color** set to 3500K.
-- **Breeze Dark theme** and **Papirus** / **Breeze** icon themes.
-- **Power Management**: Disables automatic suspend when connected to AC power.
-- **Global Terminal Shortcut**: Meta + T for Konsole.
+Automatically mounts the `/home/caballero/Workspace` data partition via `/etc/fstab` using UUID or `Workspace` label.
+Uses `defaults,noatime,nofail` to prevent any system hang during boot if the drive is disconnected.
 
 ```bash
+./Setup/mount-workspace.sh
+```
+
+---
+
+## 3. Native x86_64-v3 Linux Kernel Compiler (`build-custom-kernel.sh`)
+
+Queries `kernel.org` API (`https://www.kernel.org/releases.json`) to download the latest stable Linux Kernel, applies `x86_64-v3` optimization flags, -O3, **1000Hz** low latency, and **Dynamic Preemption**, producing installable `.deb` packages.
+
+```bash
+./Setup/build-custom-kernel.sh
+# Or using just:
+just build-kernel
+```
+
+---
+
+## 4. KDE Plasma Customization (`kde-settings.sh`)
+
+Configures advanced KDE Plasma settings via CLI (`kwriteconfig5`/`kwriteconfig6`):
+- **Night Color** at 3500K.
+- **Touchpad**: Tap-to-click, natural scroll, multi-finger gestures.
+- **Power Management**: Balanced battery suspension, high performance on AC.
+- **Visual Style**: Breeze Dark with Papirus icon integration.
+
+```bash
+./Setup/kde-settings.sh
+# Or using just:
 just kde
-just apariencia
 ```
 
 ---
 
-## 3. Terminal & Shell Environment (`shell.sh`, `fastfetch.sh`, `fonts.sh`)
+## 5. 3D Matrix Screensaver (`screensaver-setup.sh`)
 
-Installs modern command line utilities, development typography, and the Starship prompt.
+Installs XScreenSaver OpenGL 3D collection (Matrix, GLMatrix, Pipes, Flurry) and registers autostart for animated screen locking.
 
-### Modern Terminal Tools
-- `eza` (modern `ls` replacement)
-- `bat` (enhanced `cat` with syntax highlighting)
-- `fzf` (fuzzy finder)
-- `zoxide` (smart `cd` directory jumper)
-- `ripgrep` (`rg`, blazing fast text search)
-- `fd-find` (`fd`, simple and fast file search)
-- `tealdeer` (`tldr`, quick cheat sheets)
-- `duf` (visual disk usage tables)
-- `du-dust` (`dust`, graphical directory disk usage)
-- `procs` (modern process viewer)
-
-### Starship Prompt
-Downloads and deploys the latest Starship prompt with custom configuration in `~/.config/starship.toml`.
-
-### Nerd Fonts
-Installs top developer typefaces (`JetBrainsMono`, `FiraCode`, `CascadiaCode`, `Meslo`, `Hack`).
-
-### Fastfetch
-Displays aesthetic system details upon opening the terminal.
+```bash
+./Setup/screensaver-setup.sh
+```
 
 ---
 
-## 4. Hardware and System Utilities
+## 6. Terminal & Shell (`shell.sh`, `fastfetch.sh`, `fonts.sh`)
 
-### Native Firefox (.deb) (`firefox.sh`)
-Installs the official Mozilla APT repository version with APT Pinning (Pin-Priority 900) and removes the Snap package for optimal performance:
-```bash
-just firefox
-```
+Installs modern CLI tools, development typography (Nerd Fonts), and the fast Starship prompt.
 
-### Laptop Optimization (`laptop-setup.sh`)
-Enables battery savings (`power-profiles-daemon`), bluetooth, hybrid graphics, and touchpad gestures:
-```bash
-just laptop
-```
-
-### Fingerprint Authentication (`fingerprint-setup.sh`)
-Configures `fprintd`, PAM for `sudo`, `polkit-1`, and SDDM lockscreen:
-```bash
-just fingerprint
-```
-
-### HP LaserJet Pro M15w Printer (`hp-printer-setup.sh`)
-Configures CUPS, HPLIP drivers, and proprietary HP plugin:
-```bash
-just printer
-```
-
-### Workspace Automount (`mount-workspace.sh`)
-Configures permanent automounting of `/home/caballero/Workspace` partition in `/etc/fstab`.
+### Modern CLI Tools
+Replaces traditional tools with modern Rust-based equivalents: `eza`, `bat`, `fzf`, `zoxide`, `ripgrep` (`rg`), `fd-find` (`fd`), `duf`, `dust`, `procs`.
 
 ---
 
-## 5. Web Management Cockpit (`cockpit.sh`)
+## 7. Web Management Console - Cockpit (`cockpit.sh`)
 
-Installs Cockpit with support for storage, network, KVM virtual machines (`cockpit-machines`), and containers (`cockpit-podman`):
-```bash
-just cockpit
-```
-Access locally at [https://localhost:9090](https://localhost:9090).
+Installs Cockpit with full module suite:
+- `cockpit-podman`: Podman container management.
+- `cockpit-machines`: KVM/QEMU VM management.
+- `cockpit-storaged`: NVMe/SSD health, LVM, and SMART metrics.
+- `cockpit-networkmanager`: Network interface management.
+- `lm-sensors`: CPU/GPU temperature and fan speed monitoring.
 
----
-
-## 6. Multimedia and yt-dlp (`yt-dlp-setup.sh`)
-
-Installs `yt-dlp`, `ffmpeg`, and configures the JS engine (Deno) via `mise`.
+Configures UFW rate limiting (`sudo ufw limit 9090/tcp`) and uses on-demand socket activation (`cockpit.socket`) for 0 MB RAM idle footprint. Accessible at [https://localhost:9090](https://localhost:9090).
 
 ---
 
-## Verification
+## 8. Desktop Appearance (`apariencia.sh`)
 
-- **Terminal**: Open a new Konsole window to see **Starship** and **Fastfetch**.
-- **KDE Plasma**: Confirm Breeze Dark and Night Color in System Settings.
-- **Cockpit**: Open [https://localhost:9090](https://localhost:9090).
+Applies clean styling with Papirus and Breeze Dark themes.

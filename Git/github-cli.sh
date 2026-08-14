@@ -1,7 +1,7 @@
 #!/bin/bash
-# github-cli.sh - GitHub CLI Installation for Kubuntu/Ubuntu
+# github-cli.sh - GitHub CLI Installation for Kubuntu
 
-set -e
+set -euo pipefail
 
 echo "ℹ️ Instalando GitHub CLI (gh) desde el repo oficial..."
 

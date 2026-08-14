@@ -2,100 +2,62 @@
 sidebar_position: 7
 ---
 
-# Virtualization Environment (KVM/QEMU) in Kubuntu
+# High-Performance Virtualization (KVM/QEMU) in Kubuntu
 
-This guide details the installation, configuration, and optimization of the native virtualization environment in the `Virtualizacion` directory.
+This guide details the installation, configuration, and optimization of the KVM/QEMU virtualization environment provided in [`Virtualizacion/virtualization.sh`](file:///home/caballero/Workspace/Repositorios/Linux/Kubuntu/Virtualizacion/virtualization.sh).
 
-The setup utilizes the **KVM** hypervisor and **QEMU** emulator, managed via the `libvirtd` system daemon, with modern guest support (UEFI/TPM) and network/disk optimizations.
+The setup leverages **KVM**, **QEMU**, **Virt-Manager**, native **PipeWire** audio passthrough, **nftables** firewall backend, **`vhost_vsock`** memory sockets, and nested virtualization.
 
 ---
 
 ## 1. Package Installation (`virtualization.sh`)
 
-Installs KVM hypervisor, QEMU, Virt-Manager GUI, and supporting utilities:
+Installs QEMU, Libvirt, Virt-Manager, OVMF UEFI firmware with TPM 2.0 support, and performance tools:
 
 ```bash
-sudo apt update
-sudo apt install -y qemu-system-x86 qemu-kvm libvirt-daemon-system libvirt-clients \
-    bridge-utils virtinst virt-manager virt-viewer virt-top libguestfs-tools \
-    qemu-utils ovmf swtpm guestfs-tools libosinfo-bin tuned
+./Virtualizacion/virtualization.sh
+# Or using just:
+just virtualization
 ```
 
 ---
 
-## 2. Windows VirtIO Drivers
+## 2. Kernel Acceleration, Nested KVM & `vhost_vsock`
 
-Windows virtual machines require specialized VirtIO drivers for optimal storage and network performance. The script downloads the official ISO from Fedora:
-
-- Download path: `~/Descargas/virtio-drivers/virtio-win-0.1.271.iso`
-- Attach this ISO as a secondary CD-ROM in Windows guest VMs to install storage (`viostor`) and network (`NetKVM`) drivers.
-
----
-
-## 3. Network Configuration & Optimization
-
-The script configures:
-
-1. **Default NAT Network**:
-   ```bash
-   sudo virsh net-start default
-   sudo virsh net-autostart default
-   ```
-
-2. **Physical Bridged Network (`br0`)**:
-   Configured via NetworkManager (`nmcli`) on the active physical network interface and registered in Libvirt as `host-bridge`:
-   ```bash
-   <network>
-     <name>host-bridge</name>
-     <forward mode='bridge'/>
-     <bridge name='br0'/>
-   </network>
-   ```
+1. **Nested KVM**:
+   - Sets `nested=1` in `/etc/modprobe.d/kvm_intel.conf` or `kvm_amd.conf` to allow running containers or nested hypervisors inside VMs.
+2. **Network and Socket Acceleration**:
+   - Loads `vhost_net` and `vhost_vsock` kernel modules in `/etc/modules-load.d/kvm-vhost.conf` for ultra-fast host-to-guest communication.
 
 ---
 
-## 4. Performance Tuning & User Permissions
+## 3. Native PipeWire Audio Passthrough (`/etc/libvirt/qemu.conf`)
 
-1. **Host Tuning Profile (`tuned`)**:
-   Enables `virtual-host` profile for optimized CPU and memory scheduling:
-   ```bash
-   sudo systemctl enable --now tuned
-   sudo tuned-adm profile virtual-host
-   ```
+Enables QEMU VMs to output audio directly to the user's PipeWire sound server without permission issues:
 
-2. **Passwordless VM Management**:
-   Adds user to `libvirt` and `kvm` groups:
-   ```bash
-   sudo usermod -aG libvirt,kvm "$USER"
-   ```
-
-3. **Storage Access via Access Control Lists (ACL)**:
-   ```bash
-   sudo apt install -y acl
-   sudo setfacl -R -b /var/lib/libvirt/images
-   sudo setfacl -R -m u:"$USER":rwX /var/lib/libvirt/images
-   sudo setfacl -d -m u:"$USER":rwX /var/lib/libvirt/images
-   ```
-
-4. **Shell Environment**:
-   Configures `~/.bashrc.d/virtualization.sh`:
-   ```bash
-   export LIBVIRT_DEFAULT_URI="qemu:///system"
-   ```
+```ini
+user = "caballero"
+group = "kvm"
+```
 
 ---
 
-## Verification
+## 4. Nftables Firewall Backend (`/etc/libvirt/network.conf`)
 
-- **Host Validation**:
-  ```bash
-  virt-host-validate qemu
-  ```
-- **Libvirt Default URI**:
-  ```bash
-  virsh uri
-  ```
-- **Virtual Networks**:
-  ```bash
-  virsh net-list --all
-  ```
+Configures `firewall_backend = "nftables"` to integrate seamlessly with modern Linux packet filtering.
+
+---
+
+## 5. VirtIO Windows Drivers
+
+Automatically downloads the latest stable Fedora `virtio-win.iso` to `~/Descargas/virtio-drivers/virtio-win.iso` for storage (`viostor`) and network (`NetKVM`) drivers.
+
+---
+
+## 6. Modular Sockets & Tuned Profile (`virtual-host`)
+
+```bash
+sudo systemctl enable --now virtqemud.socket virtnetworkd.socket virtstoraged.socket
+sudo systemctl enable --now tuned.service
+sudo tuned-adm profile virtual-host
+```

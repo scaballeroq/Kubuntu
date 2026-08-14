@@ -132,9 +132,9 @@ alias pps='podman ps'                         # Contenedores en ejecución
 alias ppsa='podman ps -a'                     # Todos los contenedores
 alias pimg='podman images'                    # Imágenes locales
 alias pv='podman volume ls'                   # Volúmenes
-alias pstop-all='podman stop $(podman ps -q)' # Parar todo lo que corre
-alias prm-all='podman rm $(podman ps -aq)'    # Borrar todo contenedor parado
-alias prmi-all='podman rmi $(podman images -q)' # Borrar todas las imágenes
+pstop-all() { podman stop $(podman ps -q); }
+prm-all() { podman rm $(podman ps -aq); }
+prmi-all() { podman rmi $(podman images -q); }
 alias pexec='podman exec -it'                 # Ejecutar comando en contenedor
 alias pinspect='podman inspect'               # Inspeccionar contenedor
 alias ppull='podman pull'                     # Descargar imagen

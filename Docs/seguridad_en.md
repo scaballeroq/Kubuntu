@@ -2,87 +2,51 @@
 sidebar_position: 1
 ---
 
-# Kubuntu Security Hardening
+# Security Configuration in Kubuntu
 
-This guide details the security hardening process applied to a Kubuntu system, as automated in the security setup script.
+This guide details the security hardening process optimized for a developer workstation in Kubuntu, as automated in [`Setup/seguridad.sh`](file:///home/caballero/Workspace/Repositorios/Linux/Kubuntu/Setup/seguridad.sh).
 
-The process covers firewall configuration, DNS privacy, and critical permissions auditing.
+The setup covers firewall rules compatible with KVM/Podman, SSH protection, Fail2ban, and DNS privacy.
 
-## 1. Firewall Configuration (UFW)
+---
 
-Uncomplicated Firewall (UFW) is used to define strict network policies.
+## 1. Firewall (UFW) Configuration & KVM/Podman Routing
 
-1. Install UFW if it's not present:
+Uses Uncomplicated Firewall (UFW) configured to support virtual machines and containers seamlessly:
+
+1. **Install UFW & Fail2ban**:
    ```bash
    sudo apt update
-   sudo apt install -y ufw
+   sudo apt install -y ufw fail2ban
    ```
 
-2. Set default policies (deny incoming, allow outgoing):
+2. **KVM (`virbr0`) & Podman Compatibility (`DEFAULT_FORWARD_POLICY`)**:
+   Enables packet forwarding in `/etc/default/ufw` to prevent UFW from breaking VM network traffic:
    ```bash
-   sudo ufw default deny incoming
-   sudo ufw default allow outgoing
+   sudo sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+   sudo ufw route allow in on virbr0
    ```
 
-3. Allow SSH connections **only** from the local network and limit attempts to prevent brute-force attacks:
-   ```bash
-   sudo ufw limit from 192.168.1.0/24 to any port ssh
-   ```
-   *(Note: Adjust `192.168.1.0/24` according to your local network setup.)*
+3. **Policies & Rate Limiting**:
+   - Default deny incoming (`sudo ufw default deny incoming`).
+   - Default allow outgoing (`sudo ufw default allow outgoing`).
+   - **SSH Rate Limiting**: `sudo ufw limit ssh` protects against brute-force attacks across any Wi-Fi network.
+   - **Cockpit**: Protected with `sudo ufw limit 9090/tcp`.
 
-4. Enable the firewall:
-   ```bash
-   sudo ufw --force enable
-   ```
+4. **Fail2ban**:
+   Enabled automatically (`sudo systemctl enable --now fail2ban.service`) to ban malicious IP attempts.
 
-## 2. DNS Privacy (DNS-over-TLS)
+---
 
-To prevent ISPs from spying on your web queries, DNS traffic is encrypted via `systemd-resolved` using Cloudflare.
+## 2. DNS Privacy (DNS-over-TLS) (`seguridad-dot.sh`)
 
-1. Install `systemd-resolved`:
-   ```bash
-   sudo apt install -y systemd-resolved
-   ```
+Encrypts DNS queries via Cloudflare DNS using `systemd-resolved`:
 
-2. Configure Cloudflare servers with DNS-over-TLS by creating the `/etc/systemd/resolved.conf.d/dot.conf` file:
-   ```bash
-   sudo mkdir -p /etc/systemd/resolved.conf.d/
-   sudo tee /etc/systemd/resolved.conf.d/dot.conf > /dev/null <<'EOF'
-   [Resolve]
-   DNS=1.1.1.1 1.0.0.1
-   DNSSEC=yes
-   DNSOverTLS=yes
-   FallbackDNS=8.8.8.8
-   EOF
-   ```
+```bash
+./Setup/seguridad-dot.sh
+```
 
-3. Restart the service to apply changes:
-   ```bash
-   sudo systemctl enable --now systemd-resolved
-   sudo systemctl restart systemd-resolved
-   ```
-
-4. Redirect local traffic to the encrypted DNS:
-   ```bash
-   sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-   ```
-
-## 3. Critical Permissions Auditing
-
-Permissions for vital OS files and folders are restricted to prevent unprivileged programs or users from modifying them.
-
-1. Protect the administrator's folder and password files:
-   ```bash
-   sudo chmod 700 /root
-   sudo chmod 644 /etc/passwd
-   sudo chmod 644 /etc/group
-   sudo chmod 600 /etc/shadow
-   sudo chmod 600 /etc/gshadow
-   ```
-
-## Verification
-
-To verify that the encrypted DNS is working properly, run:
+Verify with:
 ```bash
 resolvectl status
 ```

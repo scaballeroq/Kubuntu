@@ -1,38 +1,106 @@
 #!/bin/bash
-# virtualization.sh - Instalación de Virtualización (KVM/QEMU) para Kubuntu (Optimizado)
+# virtualization.sh - Instalación y Optimización Avanzada de Virtualización (KVM/QEMU) para Kubuntu con Kernel Custom x86_64-v3
 
 set -euo pipefail
 
-echo "🚀 Iniciando instalación de virtualización KVM/QEMU en Kubuntu..."
+echo "🚀 Configurando entorno de virtualización de alto rendimiento (KVM/QEMU) en Kubuntu..."
 
-echo "ℹ️ [1/7] Instalando entornos de virtualización (KVM/QEMU) con APT..."
+TARGET_USER="${SUDO_USER:-$USER}"
+
+# 1. Instalación de paquetes necesarios
+echo "ℹ️ Instalando QEMU, libvirt, virt-manager y herramientas auxiliares vía APT..."
 sudo apt update
-# Incluye soporte para UEFI (ovmf) y TPM (swtpm) necesarios para Windows 11
-sudo apt install -y qemu-system-x86 qemu-kvm libvirt-daemon-system libvirt-clients \
-    bridge-utils virtinst virt-manager virt-viewer virt-top libguestfs-tools \
-    qemu-utils ovmf swtpm guestfs-tools libosinfo-bin tuned
+sudo apt install -y \
+    qemu-system-x86 \
+    qemu-utils \
+    libvirt-daemon-system \
+    libvirt-clients \
+    virt-manager \
+    virt-viewer \
+    virtinst \
+    dnsmasq \
+    dmidecode \
+    vde2 \
+    bridge-utils \
+    netcat-openbsd \
+    iptables \
+    nftables \
+    ovmf \
+    swtpm \
+    libosinfo-bin \
+    guestfs-tools \
+    tuned
 
-echo "ℹ️ [2/7] Descargando controladores VirtIO para Windows..."
+# 2. Controladores VirtIO para Windows (ISO estable oficial de Fedora)
+echo "ℹ️ Descargando controladores VirtIO para Windows (virtio-win.iso)..."
 VIRTIO_DIR="$HOME/Descargas/virtio-drivers"
 mkdir -p "$VIRTIO_DIR"
-if [ ! -f "$VIRTIO_DIR/virtio-win-0.1.271.iso" ]; then
-    wget -P "$VIRTIO_DIR" https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.271-1/virtio-win-0.1.271.iso || true
+if [ ! -f "$VIRTIO_DIR/virtio-win.iso" ]; then
+    echo "⬇️ Descargando la versión estable más reciente de virtio-win.iso..."
+    curl -fsSL -o "$VIRTIO_DIR/virtio-win.iso" "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso" || true
+else
+    echo "✅ ISO de VirtIO ya presente en $VIRTIO_DIR/virtio-win.iso"
 fi
 
-echo "ℹ️ [3/7] Verificando capacidades de virtualización del host..."
-# Validar si el hardware soporta virtualización correctamente
-virt-host-validate qemu || echo "⚠️ Advertencia: Algunas validaciones fallaron. Revisa tu BIOS/UEFI (Intel VT-x / AMD-V)."
+# 3. Módulos del Kernel, Virtualización Anidada (Nested KVM) y vhost_net/vhost_vsock
+echo "ℹ️ Habilitando virtualización anidada (Nested KVM) y aceleración de red (vhost_net, vhost_vsock)..."
+sudo mkdir -p /etc/modprobe.d /etc/modules-load.d
 
-echo "ℹ️ [4/7] Configurando servicios systemd de libvirt..."
-sudo systemctl enable --now libvirtd
+CPU_VENDOR=$(grep -m1 'vendor_id' /proc/cpuinfo | awk '{print $3}')
+if [ "$CPU_VENDOR" == "GenuineIntel" ]; then
+    echo "options kvm_intel nested=1" | sudo tee /etc/modprobe.d/kvm_intel.conf > /dev/null
+    sudo modprobe -r kvm_intel 2>/dev/null || true
+    sudo modprobe kvm_intel 2>/dev/null || true
+elif [ "$CPU_VENDOR" == "AuthenticAMD" ]; then
+    echo "options kvm_amd nested=1" | sudo tee /etc/modprobe.d/kvm_amd.conf > /dev/null
+    sudo modprobe -r kvm_amd 2>/dev/null || true
+    sudo modprobe kvm_amd 2>/dev/null || true
+fi
 
-echo "ℹ️ [5/7] Configurando red virtual por defecto..."
+# Aceleración de red y sockets del Kernel
+cat <<EOF | sudo tee /etc/modules-load.d/kvm-vhost.conf > /dev/null
+vhost_net
+vhost_vsock
+EOF
+sudo modprobe vhost_net 2>/dev/null || true
+sudo modprobe vhost_vsock 2>/dev/null || true
+
+# 4. Ajustes de /etc/libvirt/qemu.conf (Audio PipeWire nativo e integración de usuario)
+echo "ℹ️ Configurando usuario y grupo en /etc/libvirt/qemu.conf para soporte de sonido PipeWire..."
+if [ -f /etc/libvirt/qemu.conf ]; then
+    sudo sed -i "s/^#*user = .*/user = \"$TARGET_USER\"/" /etc/libvirt/qemu.conf 2>/dev/null || true
+    sudo sed -i "s/^#*group = .*/group = \"kvm\"/" /etc/libvirt/qemu.conf 2>/dev/null || true
+fi
+
+# 5. Ajustes de Firewall Nftables en Libvirt (/etc/libvirt/network.conf)
+echo "ℹ️ Configurando backend de firewall nftables en libvirt..."
+if [ -f /etc/libvirt/network.conf ]; then
+    sudo sed -i 's/^#*firewall_backend = .*/firewall_backend = "nftables"/' /etc/libvirt/network.conf 2>/dev/null || true
+fi
+
+# 6. Verificación de capacidades KVM del Host
+echo "ℹ️ Verificando soporte de hardware KVM..."
+virt-host-validate qemu || echo "⚠️ Advertencia: Revisa que la virtualización VT-x / AMD-V esté habilitada en tu BIOS/UEFI."
+
+# 7. Configuración de Servicios y Sockets Modulares
+echo "ℹ️ Habilitando servicios y sockets modulares de libvirt..."
+if systemctl list-unit-files | grep -q "virtqemud.socket"; then
+    sudo systemctl enable --now virtqemud.socket virtnetworkd.socket virtstoraged.socket 2>/dev/null || true
+fi
+sudo systemctl enable --now libvirtd.service 2>/dev/null || true
+
+# 8. Configuración de Red Virtual y Storage Pool por Defecto
+echo "ℹ️ Configurando red virtual NAT por defecto..."
 sudo virsh net-start default 2>/dev/null || true
 sudo virsh net-autostart default 2>/dev/null || true
 
-echo "ℹ️ [6/7] Configurando bridge de red Linux (br0) para acceso directo a la LAN..."
-# Identificar la interfaz física principal (la que tiene la ruta por defecto)
-PHYS_IFACE=$(ip route | grep default | awk '{print $5}' | head -n1 || true)
+echo "ℹ️ Configurando pool de almacenamiento por defecto..."
+sudo virsh pool-start default 2>/dev/null || true
+sudo virsh pool-autostart default 2>/dev/null || true
+
+# 9. Configuración de Bridge Linux (br0) opcional para acceso LAN directo
+echo "ℹ️ Configurando Bridge de red (br0) para acceso LAN directo..."
+PHYS_IFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
 
 if [ -n "$PHYS_IFACE" ] && [ "$PHYS_IFACE" != "br0" ]; then
     if ! nmcli con show br0 >/dev/null 2>&1; then
@@ -57,38 +125,40 @@ EOF
     fi
 fi
 
-# Aplicar optimizaciones de rendimiento con tuned
-if command -v tuned-adm &> /dev/null; then
-    echo "ℹ️ Aplicando perfil de rendimiento tuned (virtual-host)..."
-    sudo systemctl enable --now tuned || true
-    sudo tuned-adm profile virtual-host || true
-fi
+# 10. Perfil de Rendimiento Tuned (virtual-host)
+echo "ℹ️ Aplicando optimizaciones de rendimiento con tuned (virtual-host)..."
+sudo systemctl enable --now tuned.service || true
+sudo tuned-adm profile virtual-host || true
 
-echo "ℹ️ [7/7] Configurando permisos, grupos y ACLs..."
-TARGET_USER="${SUDO_USER:-$USER}"
+# 11. Permisos de Usuario y Listas de Control de Acceso (ACL)
+echo "ℹ️ Configurando grupos de usuario (libvirt, kvm)..."
+sudo usermod -aG libvirt,kvm "$TARGET_USER" 2>/dev/null || sudo usermod -aG libvirt "$TARGET_USER"
 
-# Añadir a grupos libvirt y kvm para gestión sin sudo
-sudo usermod -aG libvirt,kvm "$TARGET_USER"
-
-# Ajustar ACLs en /var/lib/libvirt/images
+echo "ℹ️ Configurando permisos ACL en el directorio de imágenes (/var/lib/libvirt/images)..."
 sudo apt install -y acl
 sudo mkdir -p /var/lib/libvirt/images
 sudo setfacl -R -b /var/lib/libvirt/images 2>/dev/null || true
 sudo setfacl -R -m u:"$TARGET_USER":rwX /var/lib/libvirt/images 2>/dev/null || true
 sudo setfacl -d -m u:"$TARGET_USER":rwX /var/lib/libvirt/images 2>/dev/null || true
 
-# Configuración modular de LIBVIRT_DEFAULT_URI
+# 12. Variable de Entorno LIBVIRT_DEFAULT_URI
+echo "ℹ️ Configurando LIBVIRT_DEFAULT_URI en el entorno del usuario..."
 if [ -d "/etc/bashrc.d" ] || [ -d "$HOME/.bashrc.d" ]; then
     mkdir -p ~/.bashrc.d
-    cat <<'EOF' > ~/.bashrc.d/virtualization.sh
+    cat <<EOF > ~/.bashrc.d/virtualization.sh
 # Configuración KVM/QEMU conectando al modo de sistema por defecto
 export LIBVIRT_DEFAULT_URI="qemu:///system"
 EOF
     echo "✅ Configuración modular de Virtualización creada en ~/.bashrc.d/virtualization.sh"
 else
     if ! grep -q "LIBVIRT_DEFAULT_URI" ~/.bashrc; then
-        echo -e '\n# Configuración KVM/QEMU conectando al modo de sistema por defecto\nexport LIBVIRT_DEFAULT_URI="qemu:///system"' >> ~/.bashrc
+        echo '' >> ~/.bashrc
+        echo '# Configuración KVM/QEMU conectando al modo de sistema por defecto' >> ~/.bashrc
+        echo "export LIBVIRT_DEFAULT_URI='qemu:///system'" >> ~/.bashrc
     fi
 fi
 
-echo "✅ Virtualización KVM/QEMU en Kubuntu configurada correctamente. Cierra sesión y vuelve a iniciar para aplicar los cambios de grupo."
+echo "================================================================="
+echo "✅ Entorno de Virtualización KVM/QEMU para Kubuntu configurado con éxito."
+echo "💡 Recuerda reiniciar o cerrar sesión para aplicar los cambios de grupo (libvirt, kvm)."
+echo "================================================================="

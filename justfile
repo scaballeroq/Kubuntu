@@ -1,16 +1,14 @@
-# =============================================================================
-# Kubuntu Environment Configuration Justfile (KDE Plasma)
-# =============================================================================
+# Kubuntu Environment Configuration Justfile
 
-# Instala todo el entorno (Post-install, Workspace, Laptop, Fingerprint, KDE, Shell, Seguridad, Fuentes, Virtualización, Mise, Cockpit, etc.)
-setup-all: post-install workspace laptop fingerprint printer kde shell security fonts virtualization mise cockpit ides git-setup languages yt-dlp fastfetch apariencia firefox
+# Instala todo el entorno (Post-install, Workspace, Laptop, Fingerprint, Tuning, Screensaver, Shell, Seguridad, Fuentes, Virtualización, Cockpit, IDEs, Git, Lenguajes, etc.)
+setup-all: post-install workspace laptop fingerprint tuning screensaver shell security security-dot fonts virtualization mise cockpit ides git-setup languages yt-dlp fastfetch apariencia kde firefox meld steam
     echo "🚀 Entorno completo de Kubuntu configurado. Por favor, reinicia el sistema."
 
 # =============================================================================
 # CONFIGURACIÓN BASE DEL SISTEMA
 # =============================================================================
 
-# Configuración base post-instalación (Repositorios universe/multiverse, flatpak, codecs)
+# Configuración base post-instalación (Universe, Multiverse, Restricted, ZRAM, Mesa, PipeWire)
 post-install:
     ./Setup/post-install.sh
 
@@ -18,11 +16,19 @@ post-install:
 workspace:
     ./Setup/mount-workspace.sh
 
-# Optimización para portátiles de desarrollo en Kubuntu (Touchpad, Batería, Bluetooth)
+# Compilador de Kernel Linux optimizado para x86_64-v3 y ajustado a tu portátil
+build-kernel:
+    ./Setup/build-custom-kernel.sh
+
+# Instalación del último Kernel Linux Oficial y Firmware HWE
+kernel-hwe:
+    ./Setup/install-hwe-kernel.sh
+
+# Optimización para portátiles de desarrollo (Touchpad, Batería, Bluetooth, KDE)
 laptop:
     ./Setup/laptop-setup.sh
 
-# Autenticación y desbloqueo por huella dactilar (fprintd, PAM, sudo, polkit, SDDM)
+# Autenticación y desbloqueo por huella dactilar (fprintd, PAM, sudo, polkit)
 fingerprint:
     ./Setup/fingerprint-setup.sh
 
@@ -30,35 +36,43 @@ fingerprint:
 printer:
     ./Setup/hp-printer-setup.sh
 
-# Personalización y optimización de KDE Plasma 6 / 5 (Night Color, atajos, KWin, energía)
-kde:
-    ./Setup/kde-settings.sh
+# Optimizaciones avanzadas de Kubuntu (Sysctl, Distrobox)
+tuning:
+    ./Setup/kubuntu-tuning.sh
 
-# Utilidades de terminal y prompt (eza, bat, fzf, zoxide, starship)
+# Configuración de salvapantallas 3D/Matrix al bloquear la pantalla
+screensaver:
+    ./Setup/screensaver-setup.sh
+
+# Utilidades de terminal y prompt (eza, bat, fzf, starship)
 shell:
     ./Setup/shell.sh
 
-# Seguridad básica (UFW firewall con reglas de desarrollo)
+# Seguridad básica (UFW firewall)
 security:
     ./Setup/seguridad.sh
+
+# Seguridad avanzada (DNS-over-TLS)
+security-dot:
+    ./Setup/seguridad-dot.sh
 
 # Fuentes de desarrollo (Nerd Fonts)
 fonts:
     ./Setup/fonts.sh
 
+# Personalización de KDE Plasma (Luz nocturna, Touchpad, Breeze Dark)
+kde:
+    ./Setup/kde-settings.sh
+
 # Información estética del sistema
 fastfetch:
     ./Setup/fastfetch.sh
 
-# Apariencia (Temas e iconos Papirus y Breeze)
+# Apariencia (temas e iconos)
 apariencia:
     ./Setup/apariencia.sh
 
-# Navegador Firefox nativo (.deb oficial de Mozilla con APT Pinning)
-firefox:
-    ./Setup/firefox.sh
-
-# Multimedia (yt-dlp, ffmpeg, motor Deno)
+# Multimedia (yt-dlp, ffmpeg)
 yt-dlp:
     ./Setup/yt-dlp-setup.sh
 
@@ -66,7 +80,7 @@ yt-dlp:
 # CONFIGURACIÓN DE RED Y VIRTUALIZACIÓN
 # =============================================================================
 
-# Configuración de KVM/QEMU, Libvirt, bridge br0 y virt-manager
+# Configuración de KVM/QEMU de alto rendimiento
 virtualization:
     ./Virtualizacion/virtualization.sh
 
@@ -95,19 +109,19 @@ mise:
 # LENGUAJES DE PROGRAMACIÓN
 # =============================================================================
 
-# Todos los lenguajes principales
-languages: node python rust dotnet java
+# Todos los lenguajes
+languages: node python rust dotnet java angular gemini
     echo "✅ Lenguajes instalados."
 
-# Node.js LTS + pnpm vía Corepack
+# Node.js LTS (22)
 node:
     ./ProgrammingLanguages/nodejs.sh
 
-# Python 3.12 vía Mise
+# Python (3.13)
 python:
     ./ProgrammingLanguages/python.sh
 
-# Rust vía rustup + cargo-binstall
+# Rust
 rust:
     ./ProgrammingLanguages/rust.sh
 
@@ -119,24 +133,20 @@ dotnet:
 java:
     ./ProgrammingLanguages/java.sh
 
-# =============================================================================
-# HERRAMIENTAS DE IA Y FRAMEWORKS
-# =============================================================================
+# Angular CLI
+angular:
+    ./ProgrammingLanguages/angular.sh
 
 # Gemini CLI
 gemini:
     ./ProgrammingLanguages/gemini.sh
-
-# Angular CLI
-angular:
-    ./ProgrammingLanguages/angular.sh
 
 # =============================================================================
 # ENTORNOS DE DESARROLLO (IDEs)
 # =============================================================================
 
 # Todos los IDEs
-ides: nvim vscode antigravity opencode
+ides: nvim vscode antigravity antigravity-cli antigravity-ide opencode
     echo "✅ IDEs instalados."
 
 # Neovim + LazyVim
@@ -147,11 +157,11 @@ nvim:
 vscode:
     ./IDE/vscode.sh
 
-# Google Antigravity Desktop
+# Google Antigravity Desktop 2.0 (Completo)
 antigravity:
     ./IDE/antigravity.sh
 
-# Google Antigravity CLI
+# Google Antigravity CLI (agy)
 antigravity-cli:
     ./IDE/antigravity-cli.sh
 
@@ -164,94 +174,29 @@ opencode:
     ./IDE/opencode.sh
 
 # =============================================================================
-# APLICACIONES Y JUEGOS
+# NAVEGADORES, APPS Y JUEGOS
 # =============================================================================
 
-# Meld (visor de diffs y merges)
+# Firefox nativo (.deb)
+firefox:
+    ./Setup/firefox.sh
+
+# Meld (diff viewer)
 meld:
     ./Apps/meld.sh
 
-# Steam y Proton-GE via Flatpak
+# Steam y herramientas de juegos
 steam:
     ./Juegos/steam.sh
 
 # =============================================================================
-# PODMAN - BASE Y SERVICIOS
+# PODMAN (QUADLETS)
 # =============================================================================
 
-# Podman base (instalación y configuración rootless)
-podman-base:
-    ./Podman/podman.sh
+# Instalación base de Podman rootless
+podman-install:
+    ./Podman/install/podman-install.sh
 
-# Bases de datos
-podman-postgres:
-    ./Podman/podman-postgres.sh
-
-podman-mysql:
-    ./Podman/podman-mysql.sh
-
-podman-mongodb:
-    ./Podman/podman-mongodb.sh
-
-podman-redis:
-    ./Podman/podman-redis.sh
-
-# Almacenamiento
-podman-minio:
-    ./Podman/podman-minio.sh
-
-# Monitoreo y Observabilidad
-podman-grafana:
-    ./Podman/podman-grafana.sh
-
-podman-prometheus:
-    ./Podman/podman-prometheus.sh
-
-podman-jaeger:
-    ./Podman/podman-jaeger.sh
-
-podman-dozzle:
-    ./Podman/podman-dozzle.sh
-
-# Administración
-podman-portainer:
-    ./Podman/podman-portainer.sh
-
-podman-adminer:
-    ./Podman/podman-adminer.sh
-
-# Autenticación
-podman-keycloak:
-    ./Podman/podman-keycloak.sh
-
-# Web y Proxy
-podman-nginx:
-    ./Podman/podman-nginx.sh
-
-# CMS
-podman-wordpress:
-    ./Podman/podman-wordpress.sh
-
-# Mensajería
-podman-rabbitmq:
-    ./Podman/podman-rabbitmq.sh
-
-podman-mailhog:
-    ./Podman/podman-mailhog.sh
-
-# Testing
-podman-browserless:
-    ./Podman/podman-browserless.sh
-
-podman-storybook:
-    ./Podman/podman-storybook.sh
-
-# Stacks completos agrupados
-podman-databases: podman-postgres podman-mysql podman-mongodb podman-redis
-    echo "✅ Bases de datos iniciadas."
-
-podman-monitoring: podman-prometheus podman-grafana podman-jaeger podman-dozzle
-    echo "✅ Stack de monitoreo iniciado."
-
-podman-admin: podman-portainer podman-adminer podman-keycloak
-    echo "✅ Stack de administración iniciado."
+# Configuración inicial de Quadlets (systemd)
+quadlets-setup:
+    ./Podman/install/quadlets-setup.sh

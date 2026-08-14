@@ -2,7 +2,7 @@
 sidebar_position: 6
 ---
 
-# Gestión de Lenguajes de Programación en Kubuntu / Ubuntu
+# Gestión de Lenguajes de Programación en Kubuntu
 
 Esta guía detalla la instalación, control y mantenimiento de lenguajes de programación y sus herramientas de desarrollo en la carpeta `ProgrammingLanguages`.
 
@@ -37,14 +37,13 @@ Mise es una herramienta de terminal moderna que reemplaza a herramientas como `a
 
 Una vez instalado Mise, se despliegan de forma global los siguientes lenguajes:
 
-### Node.js y pnpm (`nodejs.sh` y `angular.sh`)
-* **Dependencias**: Instala `build-essential`, `python3`, `g++` y `make` vía APT, necesarios para compilar dependencias nativas de npm (`node-gyp`).
-* **Instalación**: Configura la versión LTS 22 global:
+### Node.js (`nodejs.sh` y `angular.sh`)
+* **Dependencias**: Instala `build-essential`, `python3`, `g++` y `make` vía APT.
+* **Instalación**: Configura la versión LTS 22 global y activa Corepack para `pnpm` y `yarn`:
   ```bash
   mise use --global node@22
+  mise exec node@22 -- corepack enable
   ```
-* **Actualización segura de NPM**: Se aplica una limpieza de caché de npm e instalación previa de `promise-retry` para evadir errores clásicos del instalador de npm antes de subir a la versión más reciente (`npm install -g npm@latest`).
-* **Gestor de paquetes pnpm**: Activa de forma integrada **Corepack** e instala la versión más reciente de **pnpm**, un gestor de paquetes alternativo mucho más rápido y seguro que npm gracias al uso de un store global y su estructura no plana de dependencias.
 * **Angular CLI**: Se instala globalmente el CLI oficial utilizando npm manejado por Mise:
   ```bash
   mise use --global npm:@angular/cli@latest
@@ -52,14 +51,14 @@ Una vez instalado Mise, se despliegan de forma global los siguientes lenguajes:
 
 ### Python (`python.sh`)
 * **Dependencias**: Instala librerías del sistema para compilar extensiones de Python (`libssl-dev`, `zlib1g-dev`, `libffi-dev`, etc.).
-* **Instalación**: Instala la rama optimizada 3.12 y actualiza el gestor de paquetes pip:
+* **Instalación**: Instala la rama optimizada 3.13 y actualiza el gestor de paquetes pip:
   ```bash
-  mise use --global python@3.12
-  mise exec python@3.12 -- python -m pip install --upgrade pip
+  mise use --global python@3.13
+  mise exec python@3.13 -- python -m pip install --upgrade pip
   ```
 
 ### .NET SDK (`dotnet.sh`)
-* **Instalación**: Instala la última versión mayor del SDK de .NET:
+* **Instalación**: Instala la versión .NET SDK 10:
   ```bash
   mise use --global dotnet@10
   ```
@@ -82,13 +81,12 @@ Rust se gestiona mediante su herramienta estándar e independiente **Rustup**.
    ```
 
 2. **Instalador Rustup**:
-   Se descarga el script de instalación sin modificar directamente el PATH global para mantener la estructura modular:
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
    ```
 
 3. **Carga Modular de Entorno**:
-   Se añade a la carpeta `~/.bashrc.d/rust.sh` el cargador de variables de entorno de Cargo:
+   Se añade a `~/.bashrc.d/rust.sh`:
    ```bash
    if [ -f "$HOME/.cargo/env" ]; then
        . "$HOME/.cargo/env"
@@ -96,7 +94,7 @@ Rust se gestiona mediante su herramienta estándar e independiente **Rustup**.
    ```
 
 4. **Instalador de Binarios Rápidos (`cargo-binstall`)**:
-   Descarga e integra `cargo-binstall`, que permite descargar e instalar herramientas escritas en Rust directamente en binarios precompilados de sus repositorios de GitHub en lugar de compilarlas desde cero (ahorrando tiempo valioso):
+   Permite instalar herramientas escritas en Rust directamente desde binarios precompilados:
    ```bash
    curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
    ```
@@ -105,7 +103,6 @@ Rust se gestiona mediante su herramienta estándar e independiente **Rustup**.
 
 ## 4. OpenJDK Java compatible con AutoFirma (`java.sh`)
 
-AutoFirma requiere interactuar con el almacén de claves NSS y la máquina virtual Java de Kubuntu/Ubuntu. Se instala a nivel de sistema APT:
 ```bash
 sudo apt install -y default-jre default-jdk libnss3-tools
 ```
@@ -114,28 +111,12 @@ sudo apt install -y default-jre default-jdk libnss3-tools
 
 ## 5. Automatización de Tareas (`justfile`)
 
-Se incluye un archivo de tareas `just` (`justfile`) para facilitar la instalación selectiva de los diferentes lenguajes con comandos rápidos:
-
-```make
-# Instala Mise
-mise:
-    ./mise.sh
-
-# Instala Node.js
-node:
-    ./nodejs.sh
-
-# Instala Python
-python:
-    ./python.sh
-
-# Instala Rust
-rust:
-    ./rust.sh
-
-# Instala Gemini CLI
-gemini:
-    ./gemini.sh
+```bash
+just languages      # Instala todos los lenguajes
+just node           # Node.js LTS
+just python         # Python 3.13
+just rust           # Rust + Cargo
+just dotnet         # .NET SDK 10
+just java           # OpenJDK
+just gemini         # Gemini CLI
 ```
-
-Puedes ejecutar cualquiera de estas tareas con el comando `just <tarea>` en la raíz de la carpeta `ProgrammingLanguages`.

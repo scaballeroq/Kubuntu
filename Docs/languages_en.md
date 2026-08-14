@@ -2,19 +2,19 @@
 sidebar_position: 6
 ---
 
-# Programming Languages Management on Kubuntu / Ubuntu
+# Programming Languages Management in Kubuntu
 
-This guide details the installation, control, and maintenance of programming languages and their development environments managed in the `ProgrammingLanguages` folder.
+This guide details the installation, management, and maintenance of programming languages and SDKs in the `ProgrammingLanguages` directory.
 
-Environment management is centralized through **Mise** (runtimes and SDKs) and **Rustup** (Rust toolchain), supplemented by automated tasks configured via a `justfile`.
+Runtimes and SDKs are centrally managed via **Mise** and **Rustup**, automated through `justfile` recipes.
 
 ---
 
-## 1. Version Manager Mise (`mise.sh`)
+## 1. Mise Runtime Manager (`mise.sh`)
 
-Mise is a modern CLI version manager that replaces older tools like `asdf`, `nvm`, or `pyenv`. It downloads and configures development environments globally or locally.
+Mise is a modern CLI version manager replacing `asdf`, `nvm`, or `pyenv`.
 
-1. **Official Repository Registration and Installation**:
+1. **Official APT Repository & Installation**:
    ```bash
    sudo apt update
    sudo apt install -y curl gpg
@@ -26,49 +26,41 @@ Mise is a modern CLI version manager that replaces older tools like `asdf`, `nvm
    ```
 
 2. **Shell Activation**:
-   Mise initialization is added to `~/.bashrc.d/mise.sh`:
+   Modularly loaded via `~/.bashrc.d/mise.sh`:
    ```bash
    eval "$(mise activate bash)"
    ```
 
 ---
 
-## 2. Language Runtimes and SDKs
+## 2. Language Runtimes & SDKs
 
-Once Mise is installed, the following development environments are deployed globally:
-
-### Node.js and pnpm (`nodejs.sh` and `angular.sh`)
-* **Dependencies**: Installs `build-essential`, `python3`, `g++`, and `make` via APT, which are required to build native npm dependencies (`node-gyp`).
-* **Installation**: Configures the global Node.js LTS 22 release:
+### Node.js (`nodejs.sh` & `angular.sh`)
+* **Node.js LTS (22)** with Corepack enabled for `pnpm` and `yarn`:
   ```bash
   mise use --global node@22
+  mise exec node@22 -- corepack enable
   ```
-* **Safe NPM Updates**: Cleans npm cache and pre-installs the `promise-retry` package to bypass common npm registry upgrade errors, then updates NPM:
-  ```bash
-  mise exec node@22 -- npm install -g npm@latest
-  ```
-* **pnpm Package Manager**: Enables **Corepack** natively and configures the latest release of **pnpm**. PNPM is a faster, disk-space efficient, and more secure alternative to traditional npm due to its content-addressable storage structure and non-flat node_modules layout.
-* **Angular CLI**: Installs the official Angular CLI globally:
+* **Angular CLI**:
   ```bash
   mise use --global npm:@angular/cli@latest
   ```
 
 ### Python (`python.sh`)
-* **Dependencies**: Installs system libraries required to build C extensions for Python (`libssl-dev`, `zlib1g-dev`, `libffi-dev`, etc.).
-* **Installation**: Installs the optimized 3.12 branch and updates the pip package manager:
+* **Python 3.13** and pip upgrade:
   ```bash
-  mise use --global python@3.12
-  mise exec python@3.12 -- python -m pip install --upgrade pip
+  mise use --global python@3.13
+  mise exec python@3.13 -- python -m pip install --upgrade pip
   ```
 
 ### .NET SDK (`dotnet.sh`)
-* **Installation**: Installs the latest major version of the .NET SDK:
+* **.NET SDK 10**:
   ```bash
   mise use --global dotnet@10
   ```
 
 ### Gemini CLI (`gemini.sh`)
-* **Installation**: Installs the Google Gemini command-line helper interface:
+* **Google Gemini CLI**:
   ```bash
   mise use --global npm:@google/gemini-cli@latest
   ```
@@ -77,68 +69,30 @@ Once Mise is installed, the following development environments are deployed glob
 
 ## 3. Rust Environment (`rust.sh`)
 
-Rust is managed through its official standard toolchain installer **Rustup**.
-
-1. **System Build Dependencies**:
-   ```bash
-   sudo apt install -y build-essential cmake libssl-dev pkg-config curl
-   ```
-
-2. **Rustup Installation**:
-   Downloads the installation script without directly modifying the global environment path to preserve modular loading:
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-   ```
-
-3. **Modular Environment Loading**:
-   Adds the Cargo bin path variables inside `~/.bashrc.d/rust.sh`:
-   ```bash
-   if [ -f "$HOME/.cargo/env" ]; then
-       . "$HOME/.cargo/env"
-   fi
-   ```
-
-4. **Fast Binary Installer (`cargo-binstall`)**:
-   Downloads and integrates `cargo-binstall`, which installs Rust-written CLI tools directly from GitHub pre-compiled binaries instead of compiling them from source locally (saving massive compilation times):
-   ```bash
-   curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-   ```
+Managed via standard **Rustup**:
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+```
+Includes `cargo-binstall` for downloading pre-compiled Rust CLI binaries without local compilation.
 
 ---
 
-## 4. OpenJDK Java compatible with AutoFirma (`java.sh`)
+## 4. OpenJDK Java (`java.sh`)
 
-AutoFirma requires Java Virtual Machine integration and NSS tools. These are installed system-wide via APT:
 ```bash
 sudo apt install -y default-jre default-jdk libnss3-tools
 ```
 
 ---
 
-## 5. Task Automation (`justfile`)
+## 5. Automation (`justfile`)
 
-A `justfile` is included to trigger individual runtime installations using simple commands:
-
-```make
-# Installs Mise
-mise:
-    ./mise.sh
-
-# Installs Node
-node:
-    ./nodejs.sh
-
-# Installs Python
-python:
-    ./python.sh
-
-# Installs Rust
-rust:
-    ./rust.sh
-
-# Installs Gemini CLI
-gemini:
-    ./gemini.sh
+```bash
+just languages      # Install all languages
+just node           # Node.js LTS
+just python         # Python 3.13
+just rust           # Rust + Cargo
+just dotnet         # .NET SDK 10
+just java           # OpenJDK
+just gemini         # Gemini CLI
 ```
-
-You can execute any recipe with `just <recipe>` inside the `ProgrammingLanguages` folder.

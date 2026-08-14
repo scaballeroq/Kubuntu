@@ -1,74 +1,95 @@
-# 🚀 Kubuntu Bash Setup (.bashrc.d)
+# 🚀 Bash.Setup (Kubuntu)
 
-Colección modular de scripts de configuración para Bash, diseñados específicamente para optimizar la productividad y experiencia en **Kubuntu (KDE Plasma)** y sistemas derivados.
+Colección de scripts de configuración y funciones avanzadas para potenciar tu terminal Bash en Kubuntu / Ubuntu con KDE Plasma.
+
+Este repositorio organiza de forma modular tus alias, variables de entorno, utilidades multimedia y gestores de contenedores (Podman).
 
 ---
 
-## 📁 Contenido del Módulo
+## 📁 Estructura del Proyecto
 
 | Archivo | Descripción |
 | :--- | :--- |
-| `aliases.sh` | Atajos para comandos frecuentes, navegación, Git, APT, utilidades modernas de Rust y virtualización. |
-| `functions.sh` | Funciones utilitarias para navegación, backups, compresión, búsqueda de procesos y conversión multimedia. |
-| `podman-functions.sh` | Funciones avanzadas para gestionar contenedores Podman de forma ágil y segura sin colisiones. |
-| `rclone_aliases.sh` | Atajos y funciones de sincronización, copia y dry-run con Google Drive y OneDrive. |
-| `yt-dlp_aliases.sh` | Atajos para descarga de video/audio en alta calidad con cookies de navegador y motor JS. |
-| `history.sh` | Configuración optimizada del historial de Bash (10k/20k líneas, sin duplicados y con timestamps). |
-| `environment.sh` | Definición de variables globales (`EDITOR`, `PATH`) y personalización visual de `less` y `man`. |
+| `aliases.sh` | Atajos generales de navegación, seguridad (`rm -i`), gestión de paquetes (`apt`), comprobación de Kernel (`check-kernel`), virtualización (`virsh`) e integración con `eza` y `bat`. |
+| `functions.sh` | El "navaja suiza": utilidades multimedia (FFMPEG), gestión de discos, extracción de archivos (unificado) y navegación avanzada. |
+| `podman-functions.sh` | Funciones y aliases específicos para **Podman**, Pods y contenedores. |
+| `rclone_aliases.sh` | Sincronización avanzada con la nube (Google Drive, OneDrive) mediante **Rclone** con `--fast-list` y `--tpslimit 10`. |
+| `yt-dlp_aliases.sh` | Atajos para descarga optimizada de vídeo (1080p) y audio (MP3) con **yt-dlp**. |
+| `history.sh` | Configuración optimizada del historial de Bash (10k/20k líneas, sin duplicados). |
+| `environment.sh` | Definición de variables globales (`EDITOR`, `PATH`, `UPDATE_ANTIGRAVITY_*`) y personalización visual de `less` y `man`. |
 | `options.sh` | Configuración del comportamiento de Bash (`autocd`, `globstar`, corrección de typos). |
-| `desktop_settings.sh` | Optimizaciones de escritorio para KDE Plasma 6/5 (Luz nocturna, energía, temas Breeze, aliases). |
+| `desktop_settings.sh` | Optimizaciones para **KDE Plasma 6/5** (Luz nocturna, energía, temas Breeze) y compatibilidad GNOME. |
 
 ---
 
-## ⚙️ Instalación
+## 🛠️ Instalación
 
-Para activar estos módulos de forma automática, crea el directorio `~/.bashrc.d` y enlaza simbólicamente los scripts:
-
-```bash
-mkdir -p ~/.bashrc.d
-ln -s ~/Workspace/Repositorios/Kubuntu/Bash.Setup/*.sh ~/.bashrc.d/
-```
-
-*Nota: Asegúrate de ajustar la ruta al directorio donde hayas clonado el repositorio.*
-
-Luego, agrega el cargador modular a tu `~/.bashrc` si aún no lo tienes:
+Para activar todas estas funcionalidades, se recomienda crear una carpeta `.bashrc.d` en tu home y añadir el siguiente bloque a tu archivo `~/.bashrc`:
 
 ```bash
-# Cargar módulos de ~/.bashrc.d
-if [ -d ~/.bashrc.d ]; then
-    for rc in ~/.bashrc.d/*.sh; do
-        [ -f "$rc" ] && source "$rc"
+# Carga modular de scripts
+if [ -d "$HOME/.bashrc.d" ]; then
+    for script in "$HOME/.bashrc.d"/*.sh; do
+        [ -r "$script" ] && source "$script"
     done
+    unset script
 fi
 ```
 
+Luego, puedes crear enlaces simbólicos de los scripts de este repositorio a esa carpeta:
+
+```bash
+mkdir -p ~/.bashrc.d
+ln -s ~/Workspace/Repositorios/Linux/Kubuntu/Bash.Setup/*.sh ~/.bashrc.d/
+```
+
 ---
 
-## 🛠️ Comandos Destacados
+## ✨ Características Destacadas
 
-### 📦 Contenedores (Podman)
-- `psh <contenedor>`: Abre una shell interactiva dentro del contenedor.
-- `plogs <contenedor>`: Muestra logs en tiempo real con `--tail 100`.
-- `ppsf` / `ppsaf`: Listado de contenedores formateado en tabla limpia.
-- `pstats`: Monitor en vivo de consumo de CPU, RAM y red.
-- `pclean` / `pclean-all`: Limpieza profunda del sistema de contenedores.
+### 🐳 Contenedores (Podman)
+- `psh`: Entra en una shell interactiva de un contenedor con un solo comando.
+- `plogs`: Sigue los logs en tiempo real.
+- `pstats`: Monitoriza recursos de forma limpia.
+- `pclean-all`: Limpieza profunda del sistema de contenedores.
 
 ### 🎬 Multimedia (FFMPEG & ImageMagick)
-- `webm2mp4`: Convierte grabaciones de pantalla a MP4 compatible.
+- `webm2mp4`: Convierte grabaciones a MP4 compatible.
 - `img2jpg` / `img2png`: Optimiza imágenes para web o almacenamiento.
 - `transcode-video-1080p`: Optimización rápida de video.
 
-### 🖥️ KDE Plasma
-- `kde-night-light-on` / `kde-night-light-off`: Control rápido de Luz Nocturna.
-- `kde-theme-dark` / `kde-theme-light`: Alterna entre tema Breeze Oscuro y Claro.
-- `kde-conf`: Acceso directo a Preferencias del Sistema.
+### 📂 Navegación y Archivos
+- `mkcd`: Crea un directorio y entra en él al instante.
+- `extract`: Descomprime casi cualquier formato sin recordar las flags de `tar`.
+- `up`: Sube varios niveles de directorio fácilmente (`up 3`).
+- `duh`: Visualiza el tamaño de carpetas ordenado por peso.
 
 ### ☁️ Sincronización (Rclone)
-- `gdrive-documentos` / `gdrive-documentos-copy`: Sincroniza o copia tu carpeta de documentos con Google Drive.
-- `gdrive-videos-down` / `gdrive-videos-down-copy`: Descarga tus vídeos de la nube al equipo local.
-- `gdrive-repos-kubuntu`: Respaldo específico del repositorio de Kubuntu.
-- Optimizado para Google Drive con límites de TPS (`--tpslimit 10`), carga rápida (`--fast-list`) y simulaciones `--dry-run`.
+- `gdrive-documentos`: Sincroniza tu carpeta de documentos con Google Drive.
+- `gdrive-videos-down`: Descarga tus vídeos de la nube al equipo local.
+- Configurado con límites de TPS y logs detallados para evitar bloqueos.
 
 ### 📥 Descargas (YT-DLP)
 - `ytvideo` / `ytaudio`: Descarga directa en MP4 (1080p) o MP3 (alta calidad).
-- `ytlista` / `ytlista-audio`: Descarga de listas de reproducción organizadas por índice.
+- `ytlista`: Descarga listas completas de reproducción convertidas a audio.
+
+---
+
+## 📦 Herramientas Recomendadas
+
+Para disfrutar de la experiencia completa con los aliases predefinidos, se recomienda instalar:
+- **[bat](https://github.com/sharkdp/bat)**: `cat` con resaltado de sintaxis.
+- **[eza](https://github.com/eza-community/eza)**: Reemplazo moderno de `ls` con iconos.
+- **[ffmpeg](https://ffmpeg.org/)**: Motor de procesamiento multimedia.
+- **[rclone](https://rclone.org/)**: El "rsync" para almacenamiento en la nube.
+- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)**: Potente extractor de vídeo y audio de YouTube y otros sitios.
+- **[ImageMagick](https://imagemagick.org/)**: Manipulación de imágenes por consola.
+- **[starship](https://starship.rs/)**: Prompt rápido y personalizable.
+
+---
+
+## 🛡️ Seguridad
+El archivo `aliases.sh` incluye medidas de protección como:
+- `rm`, `cp`, `mv` interactivos para evitar borrados accidentales.
+- Protección del directorio raíz (`--preserve-root`).
+- Verificación automática de la tabla de particiones en funciones de disco.
